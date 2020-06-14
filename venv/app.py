@@ -1,5 +1,15 @@
 from flask import Flask, url_for, jsonify, abort, make_response, request
 from flask_httpauth import HTTPBasicAuth
+import mysql.connector, hashlib
+
+mydb = mysql.connector.connect(
+  host="127.0.0.1",
+  user="root",
+  password="password",
+  database="users"
+)
+
+
 
 auth = HTTPBasicAuth()
 
@@ -20,6 +30,47 @@ tasks = [
         'done': False
     }
 ]
+
+
+    
+@app.route('/userpass', methods = ['POST'])
+def new_user():
+    username = request.json.get('username')
+    password = request.json.get('password')
+    password=hashlib.md5(password.encode())
+    password=password.hexdigest()
+    if username is None or password is None:
+        abort(400) # missing argument
+    c = mydb.cursor()
+    sql="Insert into userlogin(Username,Password) values (%s, %s)"
+    value=(username,password)
+    c.execute(sql,value)
+    mydb.commit()
+    return jsonify({ 'username':username , "password": password}), 201
+
+
+@app.route('/usersignin', methods = ['POST'])
+def sign_in():
+    username = request.json.get('username')
+    password = request.json.get('password')
+    password=hashlib.md5(password.encode())
+    password=password.hexdigest()
+    if username is None or password is None:
+        abort(400) # missing argument
+    c = mydb.cursor()
+    sql="select * from userlogin where Username=%s and Password=%s"
+    value=(username,password)
+    c.execute(sql,value)
+    result=c.fetchall()
+    for data in result:
+        if(len(data) == 0):
+            abort(400)
+                
+        else:
+            return jsonify({ 'username':username , "password": password}), 201
+            
+
+
 
 
 @auth.get_password
